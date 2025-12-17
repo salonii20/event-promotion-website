@@ -26,16 +26,17 @@ spec:
         REGISTRY = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         SONAR_URL = "http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000"
         IMAGE_NAME = "event-promotion-website"
+        // Ensure the NAMESPACE below matches your roll number provided by the college
         NAMESPACE = "your-roll-no-namespace" 
-        // TRY ONE OF THESE COMMON IDs: "registry-credentials", "docker-creds", or "nexus-credentials"
-        CREDS_ID = "registry-credentials" 
+        // THIS IS THE MOST COMMON COLLEGE ID:
+        CREDS_ID = "docker-registry-creds" 
     }
     stages {
         stage('Build') {
             steps { echo 'Building application...' }
         }
         stage('Analyze') {
-            steps { echo "Analyzing code at ${SONAR_URL}" }
+            steps { echo "Analyzing code quality..." }
         }
         stage('Package') {
             steps {
@@ -49,7 +50,6 @@ spec:
         stage('Push to Registry') {
             steps {
                 container('docker') {
-                    // This block performs the secure login before pushing
                     withCredentials([usernamePassword(credentialsId: "${CREDS_ID}", passwordVariable: 'NEXUS_PWD', usernameVariable: 'NEXUS_USR')]) {
                         script {
                             sh "docker login -u ${NEXUS_USR} -p ${NEXUS_PWD} http://${REGISTRY}"
@@ -62,6 +62,7 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 script {
+                    // This applies all files in your project's k8s/ folder
                     sh "kubectl apply -f k8s/ -n ${NAMESPACE}"
                     sh "kubectl set image deployment/${IMAGE_NAME} event-promotion-container=${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -n ${NAMESPACE}"
                 }
