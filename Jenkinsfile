@@ -26,7 +26,9 @@ spec:
         REGISTRY = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         SONAR_URL = "http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000"
         IMAGE_NAME = "event-promotion-website"
-        NAMESPACE = "your-roll-no-namespace" // Change to your actual namespace
+        NAMESPACE = "your-roll-no-namespace" 
+        // TRY ONE OF THESE COMMON IDs: "registry-credentials", "docker-creds", or "nexus-credentials"
+        CREDS_ID = "registry-credentials" 
     }
     stages {
         stage('Build') {
@@ -47,10 +49,12 @@ spec:
         stage('Push to Registry') {
             steps {
                 container('docker') {
-                    script {
-                        // Attempting push without explicit credentials since many 
-                        // internal cluster registries use IP-based trust
-                        sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
+                    // This block performs the secure login before pushing
+                    withCredentials([usernamePassword(credentialsId: "${CREDS_ID}", passwordVariable: 'NEXUS_PWD', usernameVariable: 'NEXUS_USR')]) {
+                        script {
+                            sh "docker login -u ${NEXUS_USR} -p ${NEXUS_PWD} http://${REGISTRY}"
+                            sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
+                        }
                     }
                 }
             }
