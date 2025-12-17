@@ -26,9 +26,8 @@ spec:
         REGISTRY = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         SONAR_URL = "http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000"
         IMAGE_NAME = "event-promotion-website"
-        NAMESPACE = "your-roll-no-namespace" // Ensure this is correct
-        // Change 'nexus-creds' to the actual ID provided by your instructor
-        CREDS_ID = "nexus-creds" 
+        NAMESPACE = "your-roll-no-namespace" // Change to your actual namespace
+        CREDS_ID = "nexus-creds" // Ensure this ID is provided by your instructor
     }
     stages {
         stage('Build') {
@@ -49,9 +48,10 @@ spec:
         stage('Push to Registry') {
             steps {
                 container('docker') {
-                    script {
-                        // This block performs the 'docker login' automatically
-                        docker.withRegistry("http://${REGISTRY}", "${CREDS_ID}") {
+                    // Use standard Jenkins credentials binding instead of the docker plugin
+                    withCredentials([usernamePassword(credentialsId: "${CREDS_ID}", passwordVariable: 'NEXUS_PWD', usernameVariable: 'NEXUS_USR')]) {
+                        script {
+                            sh "docker login -u ${NEXUS_USR} -p ${NEXUS_PWD} http://${REGISTRY}"
                             sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
                         }
                     }
