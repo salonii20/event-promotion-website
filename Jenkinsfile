@@ -26,34 +26,45 @@ spec:
         REGISTRY = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         SONAR_URL = "http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000"
         IMAGE_NAME = "event-promotion-website"
-        // Ensure the NAMESPACE below matches your roll number provided by the college
-        NAMESPACE = "your-roll-no-namespace" 
-        // THIS IS THE MOST COMMON COLLEGE ID:
-        CREDS_ID = "docker-registry-creds" 
+        NAMESPACE = "your-roll-no-namespace" // Ensure this is your actual roll number
     }
     stages {
-        stage('Build') {
-            steps { echo 'Building application...' }
-        }
-        stage('Analyze') {
-            steps { echo "Analyzing code quality..." }
+        stage('Build & Analyze') {
+            steps {
+                echo 'Preparing application...'
+                echo "Analyzing at ${SONAR_URL}"
+            }
         }
         stage('Package') {
             steps {
                 container('docker') {
-                    script {
-                        sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} ."
-                    }
+                    sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} ."
                 }
             }
         }
         stage('Push to Registry') {
             steps {
                 container('docker') {
-                    withCredentials([usernamePassword(credentialsId: "${CREDS_ID}", passwordVariable: 'NEXUS_PWD', usernameVariable: 'NEXUS_USR')]) {
-                        script {
-                            sh "docker login -u ${NEXUS_USR} -p ${NEXUS_PWD} http://${REGISTRY}"
-                            sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
+                    script {
+                        // We will try the two most common college IDs:
+                        def possibleIds = ["nexus-credentials", "registry-creds", "nexus"]
+                        def found = false
+                        
+                        for (id in possibleIds) {
+                            if (found) break
+                            try {
+                                withCredentials([usernamePassword(credentialsId: id, passwordVariable: 'PWD', usernameVariable: 'USR')]) {
+                                    sh "docker login -u ${USR} -p ${PWD} http://${REGISTRY}"
+                                    sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
+                                    found = true
+                                    echo "Successfully pushed using ID: ${id}"
+                                }
+                            } catch (e) {
+                                echo "Credential ID '${id}' not found, trying next..."
+                            }
+                        }
+                        if (!found) {
+                            error("Could not find any valid Nexus credentials. Please ask your instructor for the correct 'Credentials ID'.")
                         }
                     }
                 }
@@ -62,7 +73,6 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // This applies all files in your project's k8s/ folder
                     sh "kubectl apply -f k8s/ -n ${NAMESPACE}"
                     sh "kubectl set image deployment/${IMAGE_NAME} event-promotion-container=${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -n ${NAMESPACE}"
                 }
