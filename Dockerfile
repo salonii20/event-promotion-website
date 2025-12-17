@@ -5,10 +5,11 @@ FROM php:8.2-apache
 RUN docker-php-ext-install mysqli pdo pdo_mysql
 
 # Copy application source code into the web directory
-COPY ./app /var/www/html/
+COPY ./app/event-promotion-website /var/www/html/
 
-# Set permissions for the uploads folder to allow image saving
-RUN chown -R www-data:www-data /var/www/html/uploads && \
+# Create the uploads folder and set permissions to allow image saving
+RUN mkdir -p /var/www/html/uploads && \
+    chown -R www-data:www-data /var/www/html/uploads && \
     chmod -R 755 /var/www/html/uploads
 
 # Expose port 80 for web traffic
