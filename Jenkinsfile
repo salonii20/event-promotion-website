@@ -16,6 +16,10 @@ spec:
     volumeMounts:
     - name: dind-storage
       mountPath: /var/lib/docker
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command: ["cat"]
+    tty: true
   volumes:
   - name: dind-storage
     emptyDir: {}
@@ -25,16 +29,10 @@ spec:
     environment {
         REGISTRY = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         IMAGE_NAME = "event-promotion-website"
-        // CHANGE THIS TO YOUR ACTUAL ROLL NUMBER:
         NAMESPACE = "2401172" 
         CREDS_ID = "nexus-credentials"
     }
     stages {
-        stage('Build & Analyze') {
-            steps {
-                echo 'Preparing application and skipping SonarQube for final deploy...'
-            }
-        }
         stage('Package') {
             steps {
                 container('docker') {
@@ -54,9 +52,9 @@ spec:
         }
         stage('Deploy to Kubernetes') {
             steps {
-                container('docker') {
+                container('kubectl') {
                     script {
-                        // Using the docker container to run kubectl commands
+                        // This container is guaranteed to have the kubectl tool
                         sh "kubectl apply -f k8s/ -n ${NAMESPACE}"
                         sh "kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -n ${NAMESPACE}"
                     }
