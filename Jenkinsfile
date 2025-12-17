@@ -10,6 +10,9 @@ spec:
     image: docker:dind
     securityContext:
       privileged: true
+    command:
+    - dockerd-entrypoint.sh
+    - --insecure-registry=nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085
     volumeMounts:
     - name: dind-storage
       mountPath: /var/lib/docker
@@ -23,12 +26,12 @@ spec:
         REGISTRY = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         SONAR_URL = "http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000"
         IMAGE_NAME = "event-promotion-website"
-        NAMESPACE = "your-roll-no-namespace" 
+        NAMESPACE = "your-roll-no-namespace" // Ensure this is your actual namespace
     }
     stages {
         stage('Build') {
             steps {
-                echo 'Building and preparing application code...'
+                echo 'Building application code...'
             }
         }
         stage('Analyze') {
@@ -40,7 +43,6 @@ spec:
             steps {
                 container('docker') {
                     script {
-                        // Builds the image using the Dockerfile in the root
                         sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} ."
                     }
                 }
@@ -50,7 +52,7 @@ spec:
             steps {
                 container('docker') {
                     script {
-                        // Pushes the image to the Nexus registry
+                        // The insecure-registry flag in the pod definition allows this push
                         sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
                     }
                 }
@@ -59,7 +61,6 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Applies manifests from the k8s folder
                     sh "kubectl apply -f k8s/ -n ${NAMESPACE}"
                     sh "kubectl set image deployment/${IMAGE_NAME} event-promotion-container=${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -n ${NAMESPACE}"
                 }
