@@ -26,18 +26,16 @@ spec:
         REGISTRY = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         SONAR_URL = "http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000"
         IMAGE_NAME = "event-promotion-website"
-        NAMESPACE = "your-roll-no-namespace" // Ensure this is your actual namespace
+        NAMESPACE = "your-roll-no-namespace" // Ensure this is correct
+        // Change 'nexus-creds' to the actual ID provided by your instructor
+        CREDS_ID = "nexus-creds" 
     }
     stages {
         stage('Build') {
-            steps {
-                echo 'Building application code...'
-            }
+            steps { echo 'Building application...' }
         }
         stage('Analyze') {
-            steps {
-                echo "Performing SonarQube quality analysis at ${SONAR_URL}"
-            }
+            steps { echo "Analyzing code at ${SONAR_URL}" }
         }
         stage('Package') {
             steps {
@@ -52,8 +50,10 @@ spec:
             steps {
                 container('docker') {
                     script {
-                        // The insecure-registry flag in the pod definition allows this push
-                        sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
+                        // This block performs the 'docker login' automatically
+                        docker.withRegistry("http://${REGISTRY}", "${CREDS_ID}") {
+                            sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
+                        }
                     }
                 }
             }
