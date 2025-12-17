@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: event-promotion-ingress
+spec:
+  rules:
+  - host: eventify.college.edu # Change this to your assigned domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: event-promotion-service
+            port:
+              number: 80

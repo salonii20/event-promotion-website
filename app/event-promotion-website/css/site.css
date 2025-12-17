@@ -1,0 +1,83 @@
+/* Reset default margin and padding */
+body, h1, h2, h3, p, ul, li {
+    margin: 0;
+    padding: 0;
+}
+
+/* Set the font family and base font size */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 16px;
+    color: #333; /* Default text color */
+    background-color: #f0f0f0; /* Default background color */
+}
+
+/* Style the header */
+header {
+    background-color: #333;
+    color: #fff;
+    padding: 20px;
+    text-align: center;
+    font-size: 24px; /* Increase header font size */
+    font-weight: bold; /* Make header text bold */
+}
+
+/* Style the navigation */
+nav {
+    background-color: #444;
+    padding: 10px;
+}
+
+nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+nav ul li {
+    display: inline;
+    margin-right: 10px;
+}
+
+nav ul li a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: bold; /* Make navigation links bold */
+}
+
+nav ul li {
+    display: inline; /* Display list items inline */
+    margin-right: 60px; /* Adjust spacing between list items */
+}
+
+.nav-gap {
+    color: #fff; /* Set color for the gap element */
+}
+
+/* Style the main content */
+#wrapper {
+    margin: 20px;
+}
+
+/* Style the footer */
+footer {
+    background-color: #222; /* Darker footer background */
+    color: #fff;
+    padding: 10px;
+    text-align: center;
+    font-size: 14px; /* Decrease footer font size */
+}
+
+footer ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+footer ul li {
+    display: inline; /* Display list items inline */
+    margin-right: 10px; /* Adjust spacing between list items */
+}
+
+.footer-gap {
+    color: #fff; /* Set color for the gap element */
+}
