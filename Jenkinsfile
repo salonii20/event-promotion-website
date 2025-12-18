@@ -25,11 +25,8 @@ spec:
     environment {
         REGISTRY = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         IMAGE_NAME = "event-promotion-website"
-        
-        // --- CHANGE THIS TO YOUR ACTUAL NAMESPACE (Check Lens) ---
-        // Examples: "student-2401172", "2401172-ns", or "default"
-        NAMESPACE = "student-2401172" 
-        
+        // Try '2401172' first. If it says NotFound, change this to 'default'
+        NAMESPACE = "2401172" 
         CREDS_ID = "nexus-credentials"
     }
     stages {
@@ -44,7 +41,7 @@ spec:
             steps {
                 container('docker') {
                     withCredentials([usernamePassword(credentialsId: "${CREDS_ID}", passwordVariable: 'PWD', usernameVariable: 'USR')]) {
-                        sh "docker login -u ${USR} -p ${PWD} http://${REGISTRY}"
+                        sh "docker login -u student -p ${PWD} http://${REGISTRY}"
                         sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
                     }
                 }
@@ -58,7 +55,7 @@ spec:
                             wget https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl
                             chmod +x kubectl
                             ./kubectl apply -f k8s/ -n ${NAMESPACE}
-                            ./kubectl set image deployment/${IMAGE_NAME} event-promotion-container=${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -n ${NAMESPACE}
+                            ./kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -n ${NAMESPACE}
                         """
                     }
                 }
