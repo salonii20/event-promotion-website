@@ -1,13 +1,13 @@
-# Pull from local mirror to bypass Docker Hub rate limits
+# REPLACE the old 'FROM php:8.2-apache' with this mandatory line:
 FROM nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085/php:8.2-apache
 
-# Install MySQL extensions needed for your app
+# Keep the rest of your installation steps exactly the same
 RUN docker-php-ext-install mysqli pdo pdo_mysql
 
-# Copy your source code into the container
+# Ensure code is copied to the correct Apache directory
 COPY ./app/event-promotion-website /var/www/html/
 
-# Create the uploads directory and set correct permissions
+# Ensure proper permissions for image uploads
 RUN mkdir -p /var/www/html/uploads && \
     chown -R www-data:www-data /var/www/html/uploads && \
     chmod -R 755 /var/www/html/uploads

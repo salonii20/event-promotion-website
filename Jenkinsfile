@@ -32,6 +32,7 @@ spec:
         REGISTRY_HOST = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         REGISTRY      = "${REGISTRY_HOST}/2401172"
         NAMESPACE     = "default" 
+        CREDS_ID      = "nexus-credentials"
     }
 
     stages {
@@ -46,12 +47,6 @@ spec:
             steps {
                 container('dind') {
                     script {
-                        // Create docker config to allow insecure registry access
-                        sh """
-                            mkdir -p ~/.docker
-                            echo '{"insecure-registries": ["${REGISTRY_HOST}"]}' > /etc/docker/daemon.json
-                        """
-                        // Wait for daemon
                         timeout(time: 1, unit: 'MINUTES') {
                             waitUntil {
                                 try {
@@ -87,10 +82,11 @@ spec:
         stage('Push Image') {
             steps {
                 container('dind') {
-                    // Log in without http:// prefix
-                    sh "docker login ${REGISTRY_HOST} -u admin -p Changeme@2025"
-                    sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
-                    sh "docker push ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
+                    withCredentials([usernamePassword(credentialsId: "${CREDS_ID}", passwordVariable: 'PWD', usernameVariable: 'USR')]) {
+                        sh "docker login ${REGISTRY_HOST} -u ${USR} -p ${PWD}"
+                        sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
+                        sh "docker push ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
+                    }
                 }
             }
         }
@@ -110,6 +106,6 @@ spec:
     }
 
     post {
-        success { echo "🎉 Pipeline GREEN! Build #${BUILD_NUMBER} Final Success." }
+        success { echo "🎉 Pipeline GREEN! Final deployment successful." }
     }
 }
