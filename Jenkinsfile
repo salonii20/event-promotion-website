@@ -13,6 +13,10 @@ spec:
     env:
     - name: DOCKER_TLS_CERTDIR
       value: ""
+    volumeMounts:
+    - name: docker-config
+      mountPath: /etc/docker/daemon.json
+      subPath: daemon.json
   - name: sonar-scanner
     image: sonarsource/sonar-scanner-cli
     command: ["cat"]
@@ -20,6 +24,10 @@ spec:
   - name: kubectl
     image: bitnami/kubectl:latest
     command: ["sleep", "infinity"]
+  volumes:
+  - name: docker-config
+    configMap:
+      name: docker-daemon-config
 '''
         }
     }
@@ -58,7 +66,6 @@ spec:
                                 }
                             }
                         }
-                        // Reverted to standard build that worked in #39
                         sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
                     }
                 }
@@ -68,7 +75,6 @@ spec:
         stage('SonarQube Analysis') {
             steps {
                 container('sonar-scanner') {
-                    // Stable Sonar logic from Build #39
                     sh """
                         sleep 10
                         sonar-scanner \
@@ -85,7 +91,6 @@ spec:
             steps {
                 container('dind') {
                     withCredentials([usernamePassword(credentialsId: "${CREDS_ID}", passwordVariable: 'PWD', usernameVariable: 'USR')]) {
-                        // FIXED: Removed 'http://' which failed in #39
                         sh "docker login ${REGISTRY_HOST} -u ${USR} -p ${PWD}"
                         sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
                         sh "docker push ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
