@@ -16,13 +16,6 @@ spec:
     volumeMounts:
     - name: dind-storage
       mountPath: /var/lib/docker
-  - name: kubectl
-    image: bitnami/kubectl:latest
-    # Keep the container alive so Jenkins can run commands in it
-    command:
-    - sleep
-    args:
-    - infinity
   volumes:
   - name: dind-storage
     emptyDir: {}
@@ -55,11 +48,15 @@ spec:
         }
         stage('Deploy to Kubernetes') {
             steps {
-                container('kubectl') {
+                container('docker') {
                     script {
-                        // Applies your manifests and updates the image
-                        sh "kubectl apply -f k8s/ -n ${NAMESPACE}"
-                        sh "kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -n ${NAMESPACE}"
+                        // Manually install kubectl inside the docker container to avoid connection errors
+                        sh "curl -LO 'https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl'"
+                        sh "chmod +x kubectl"
+                        
+                        // Run deployment commands using the local kubectl binary
+                        sh "./kubectl apply -f k8s/ -n ${NAMESPACE}"
+                        sh "./kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -n ${NAMESPACE}"
                     }
                 }
             }
