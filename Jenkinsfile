@@ -13,6 +13,10 @@ spec:
     env:
     - name: DOCKER_TLS_CERTDIR
       value: ""
+    volumeMounts:
+    - name: docker-config
+      mountPath: /etc/docker/daemon.json
+      subPath: daemon.json
   - name: sonar-scanner
     image: sonarsource/sonar-scanner-cli
     command: ["cat"]
@@ -20,6 +24,10 @@ spec:
   - name: kubectl
     image: bitnami/kubectl:latest
     command: ["sleep", "infinity"]
+  volumes:
+  - name: docker-config
+    configMap:
+      name: docker-daemon-config
 '''
         }
     }
@@ -68,7 +76,7 @@ spec:
             steps {
                 container('sonar-scanner') {
                     sh """
-                        sleep 5
+                        sleep 10
                         sonar-scanner \
                           -Dsonar.projectKey=2401172_Eventure \
                           -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
