@@ -23,7 +23,8 @@ spec:
     tty: true
   - name: kubectl
     image: bitnami/kubectl:latest
-    command: ["sleep", "infinity"]
+    command: ["cat"]
+    tty: true
   volumes:
   - name: docker-config
     configMap:
@@ -76,7 +77,7 @@ spec:
             steps {
                 container('sonar-scanner') {
                     sh """
-                        sleep 10
+                        sleep 5
                         sonar-scanner \
                           -Dsonar.projectKey=2401172_Eventure \
                           -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
@@ -103,10 +104,9 @@ spec:
             steps {
                 container('kubectl') {
                     dir('k8s-deployment') {
-                        sh """
-                            kubectl apply -f deployment.yaml -n ${NAMESPACE}
-                            kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
-                        """
+                        // Using 'apply' and then updating the image specifically for this build
+                        sh "kubectl apply -f deployment.yaml -n ${NAMESPACE}"
+                        sh "kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}"
                     }
                 }
             }
@@ -115,6 +115,6 @@ spec:
 
     post {
         success { echo "🎉 SUCCESS! Build #${BUILD_NUMBER} is GREEN." }
-        failure { echo "❌ Pipeline failed at stage: ${env.STAGE_NAME}" }
+        failure { echo "❌ Pipeline failed. Check the logs for details." }
     }
 }
