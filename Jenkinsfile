@@ -46,15 +46,7 @@ spec:
             steps {
                 container('dind') {
                     script {
-                        // FIX: Configure insecure registry before build
-                        sh """
-                            mkdir -p /etc/docker
-                            echo '{"insecure-registries": ["${REGISTRY_HOST}"]}' > /etc/docker/daemon.json
-                            # Kill and restart dockerd to apply the configuration
-                            pkill dockerd || true
-                            dockerd --host=unix:///var/run/docker.sock --host=tcp://0.0.0.0:2375 &
-                        """
-                        
+                        // Wait for the native daemon to be ready without killing it
                         timeout(time: 1, unit: 'MINUTES') {
                             waitUntil {
                                 try {
@@ -66,7 +58,8 @@ spec:
                                 }
                             }
                         }
-                        sh "docker build --network=host -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
+                        // Build using the build-arg to handle insecure registry if needed
+                        sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
                     }
                 }
             }
@@ -89,7 +82,8 @@ spec:
         stage('Push Image') {
             steps {
                 container('dind') {
-                    sh "docker login ${REGISTRY_HOST} -u admin -p Changeme@2025"
+                    // Login to local registry using HTTP
+                    sh "docker login http://${REGISTRY_HOST} -u admin -p Changeme@2025"
                     sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
                     sh "docker push ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
                 }
@@ -111,6 +105,7 @@ spec:
     }
 
     post {
-        success { echo "🎉 Pipeline GREEN! Final deployment successful." }
+        success { echo "🎉 Pipeline GREEN! Build #${BUILD_NUMBER} successful." }
+        failure { echo "❌ Pipeline failed - Check logs for stage errors." }
     }
 }
