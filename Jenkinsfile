@@ -46,6 +46,15 @@ spec:
             steps {
                 container('dind') {
                     script {
+                        // FIX: Configure insecure registry before build
+                        sh """
+                            mkdir -p /etc/docker
+                            echo '{"insecure-registries": ["${REGISTRY_HOST}"]}' > /etc/docker/daemon.json
+                            # Kill and restart dockerd to apply the configuration
+                            pkill dockerd || true
+                            dockerd --host=unix:///var/run/docker.sock --host=tcp://0.0.0.0:2375 &
+                        """
+                        
                         timeout(time: 1, unit: 'MINUTES') {
                             waitUntil {
                                 try {
@@ -57,7 +66,7 @@ spec:
                                 }
                             }
                         }
-                        sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
+                        sh "docker build --network=host -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
                     }
                 }
             }
