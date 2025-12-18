@@ -56,7 +56,7 @@ spec:
         SONAR_TOKEN   = "sqp_e6d7eeec95c8bd2fa2299fdda33495d5527313c5"
         REGISTRY_HOST = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         REGISTRY      = "${REGISTRY_HOST}/2401172"
-        NAMESPACE     = "2401172"
+        NAMESPACE     = "default" 
     }
 
     stages {
@@ -135,7 +135,6 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 container('kubectl') {
-                    // Points to your specific k8s-deployment directory
                     dir('k8s-deployment') {
                         sh """
                             kubectl apply -f deployment.yaml -n ${NAMESPACE}
