@@ -18,8 +18,11 @@ spec:
       mountPath: /var/lib/docker
   - name: kubectl
     image: bitnami/kubectl:latest
-    command: ["cat"]
-    tty: true
+    # Keep the container alive so Jenkins can run commands in it
+    command:
+    - sleep
+    args:
+    - infinity
   volumes:
   - name: dind-storage
     emptyDir: {}
@@ -54,7 +57,7 @@ spec:
             steps {
                 container('kubectl') {
                     script {
-                        // This container is guaranteed to have the kubectl tool
+                        // Applies your manifests and updates the image
                         sh "kubectl apply -f k8s/ -n ${NAMESPACE}"
                         sh "kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -n ${NAMESPACE}"
                     }
