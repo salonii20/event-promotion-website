@@ -46,6 +46,12 @@ spec:
             steps {
                 container('dind') {
                     script {
+                        // Create docker config to allow insecure registry access
+                        sh """
+                            mkdir -p ~/.docker
+                            echo '{"insecure-registries": ["${REGISTRY_HOST}"]}' > /etc/docker/daemon.json
+                        """
+                        // Wait for daemon
                         timeout(time: 1, unit: 'MINUTES') {
                             waitUntil {
                                 try {
@@ -67,7 +73,7 @@ spec:
             steps {
                 container('sonar-scanner') {
                     sh """
-                        sleep 10
+                        sleep 5
                         sonar-scanner \
                           -Dsonar.projectKey=2401172_Eventure \
                           -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
@@ -81,7 +87,7 @@ spec:
         stage('Push Image') {
             steps {
                 container('dind') {
-                    // FIXED: Removed 'http://' prefix which caused the Build #39 failure
+                    // Log in without http:// prefix
                     sh "docker login ${REGISTRY_HOST} -u admin -p Changeme@2025"
                     sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
                     sh "docker push ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
@@ -104,7 +110,6 @@ spec:
     }
 
     post {
-        success { echo "🎉 Pipeline GREEN! Final deployment successful." }
-        failure { echo "❌ Pipeline failed - Check logs." }
+        success { echo "🎉 Pipeline GREEN! Build #${BUILD_NUMBER} Final Success." }
     }
 }
