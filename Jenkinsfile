@@ -46,7 +46,6 @@ spec:
             steps {
                 container('dind') {
                     script {
-                        // Wait for the native daemon to be ready without killing it
                         timeout(time: 1, unit: 'MINUTES') {
                             waitUntil {
                                 try {
@@ -58,7 +57,6 @@ spec:
                                 }
                             }
                         }
-                        // Build using the build-arg to handle insecure registry if needed
                         sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
                     }
                 }
@@ -69,6 +67,7 @@ spec:
             steps {
                 container('sonar-scanner') {
                     sh """
+                        sleep 10
                         sonar-scanner \
                           -Dsonar.projectKey=2401172_Eventure \
                           -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
@@ -82,7 +81,6 @@ spec:
         stage('Push Image') {
             steps {
                 container('dind') {
-                    // Login to local registry using HTTP
                     sh "docker login http://${REGISTRY_HOST} -u admin -p Changeme@2025"
                     sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
                     sh "docker push ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
@@ -105,7 +103,7 @@ spec:
     }
 
     post {
-        success { echo "🎉 Pipeline GREEN! Build #${BUILD_NUMBER} successful." }
-        failure { echo "❌ Pipeline failed - Check logs for stage errors." }
+        success { echo "🎉 Pipeline GREEN! Final deployment successful." }
+        failure { echo "❌ Pipeline failed - Check SonarQube connectivity." }
     }
 }
