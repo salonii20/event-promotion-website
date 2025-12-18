@@ -1,65 +1,88 @@
 pipeline {
     agent {
         kubernetes {
-            yaml """
+            yaml '''
 apiVersion: v1
 kind: Pod
 spec:
   containers:
-  - name: docker
+  - name: dind
     image: docker:dind
     securityContext:
       privileged: true
-    command:
-    - dockerd-entrypoint.sh
-    - --insecure-registry=nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085
-    volumeMounts:
-    - name: dind-storage
-      mountPath: /var/lib/docker
-  volumes:
-  - name: dind-storage
-    emptyDir: {}
-"""
+    env:
+    - name: DOCKER_TLS_CERTDIR
+      value: ""
+  - name: sonar-scanner
+    image: sonarsource/sonar-scanner-cli
+    command: ["cat"]
+    tty: true
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command: ["sleep", "infinity"]
+'''
         }
     }
+
     environment {
-        REGISTRY = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
-        IMAGE_NAME = "event-promotion-website"
-        // Try '2401172' first. If it says NotFound, change this to 'default'
-        NAMESPACE = "default" 
-        CREDS_ID = "nexus-credentials"
+        DOCKER_IMAGE  = "event-promotion-website"
+        SONAR_TOKEN   = "sqp_f42fc7b9e4433f6f08040c3f2303f1e5cc5524c1"
+        REGISTRY_HOST = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
+        REGISTRY      = "${REGISTRY_HOST}"
+        NAMESPACE     = "default"
+        CREDS_ID      = "nexus-credentials"
     }
+
     stages {
         stage('Package') {
             steps {
-                container('docker') {
-                    sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} ."
+                container('dind') {
+                    script {
+                        sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
+                    }
                 }
             }
         }
+
+        stage('SonarQube Analysis') {
+            steps {
+                container('sonar-scanner') {
+                    sh """
+                        sonar-scanner \
+                          -Dsonar.projectKey=${DOCKER_IMAGE} \
+                          -Dsonar.sources=. \
+                          -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
+                          -Dsonar.token=${SONAR_TOKEN}
+                    """
+                }
+            }
+        }
+
         stage('Push to Registry') {
             steps {
-                container('docker') {
+                container('dind') {
                     withCredentials([usernamePassword(credentialsId: "${CREDS_ID}", passwordVariable: 'PWD', usernameVariable: 'USR')]) {
-                        sh "docker login -u student -p ${PWD} http://${REGISTRY}"
-                        sh "docker push ${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}"
+                        sh "docker login -u ${USR} -p ${PWD} http://${REGISTRY_HOST}"
+                        sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
+                        sh "docker push ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
                     }
                 }
             }
         }
+
         stage('Deploy to Kubernetes') {
             steps {
-                container('docker') {
-                    script {
-                        sh """
-                            wget https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl
-                            chmod +x kubectl
-                            ./kubectl apply -f k8s/ -n ${NAMESPACE}
-                            ./kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} -n ${NAMESPACE}
-                        """
-                    }
+                container('kubectl') {
+                    // Applies manifests from standard k8s/ folder
+                    sh "kubectl apply -f k8s/ -n ${NAMESPACE}"
+                    // Updates the deployment with the exact build number
+                    sh "kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}"
                 }
             }
         }
+    }
+
+    post {
+        success { echo "🎉 Pipeline GREEN! Application deployed to ${NAMESPACE}" }
     }
 }

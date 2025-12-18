@@ -1,0 +1,96 @@
+# =====================================================================
+# 1. PERSISTENT VOLUME CLAIM (FOR IMAGE UPLOADS)
+# =====================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-uploads
+  namespace: "default"
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# =====================================================================
+# 2. SERVICE (EXPOSES THE APP INTERNALLY)
+# =====================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: event-promotion-service
+  namespace: "default"
+spec:
+  selector:
+    app: event-promotion
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+---
+# =====================================================================
+# 3. DEPLOYMENT (RUNS YOUR PHP APP)
+# =====================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-promotion-website
+  namespace: "default"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: event-promotion
+  template:
+    metadata:
+      labels:
+        app: event-promotion
+    spec:
+      containers:
+        - name: event-promotion-container
+          # Uses the verified Nexus registry from your Build #20 logs
+          image: nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085/event-promotion-website:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: uploads-storage
+              mountPath: /var/www/html/uploads
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: uploads-storage
+          persistentVolumeClaim:
+            claimName: pvc-uploads
+---
+# =====================================================================
+# 4. INGRESS (PROVIDES YOUR EXTERNAL LINK)
+# =====================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: event-promotion-ingress
+  namespace: "default"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: eventify.college.edu
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: event-promotion-service
+                port:
+                  number: 80

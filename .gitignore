@@ -1,0 +1,30 @@
+# --- OS & System Files ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# --- IDEs & Editors ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# --- Application Specific (PHP) ---
+# Exclude the local uploads folder to keep your repo clean
+app/event-promotion-website/uploads/*
+!app/event-promotion-website/uploads/.gitkeep
+
+# --- Database & Logs ---
+*.log
+*.sql
+*.sqlite
+
+# --- Jenkins & Pipeline Temporary Files ---
+.scannerwork/
+node_modules/
+vendor/
+kubectl

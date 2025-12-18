@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Docker & Jenkins
+Dockerfile
+Jenkinsfile
+.dockerignore
+k8s/
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Logs and Temp
+*.log
+logs/
+tmp/
+temp/
+
+# Application Specific
+# Exclude local uploads to ensure the container starts fresh
+app/event-promotion-website/uploads/*
+# Exclude the SQL file if you have already imported it to the database
+app/event-promotion-website/*.sql
+
+# SonarQube
+.scannerwork/
+sonar-project.properties
