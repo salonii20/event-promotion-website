@@ -54,6 +54,7 @@ spec:
 
     environment {
         DOCKER_IMAGE  = "event-promotion-website"
+        // Updated SONAR_TOKEN with your provided credential
         SONAR_TOKEN   = "sqp_e6d7eeec95c8bd2fa2299fdda33495d5527313c5"
         REGISTRY_HOST = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         REGISTRY      = "${REGISTRY_HOST}/2401172"
@@ -64,7 +65,6 @@ spec:
         stage('Checkout Code') {
             steps {
                 deleteDir()
-                // Cloning your specific PHP project repository
                 sh "git clone https://github.com/salonii20/event-promotion-website.git ."
                 echo "✔ PHP Source code cloned successfully"
             }
@@ -74,7 +74,6 @@ spec:
             steps {
                 container('dind') {
                     script {
-                        // Wait for Docker daemon to be ready as per reference
                         timeout(time: 1, unit: 'MINUTES') {
                             waitUntil {
                                 try {
@@ -103,8 +102,8 @@ spec:
                 container('sonar-scanner') {
                     sh """
                         sonar-scanner \
-                          -Dsonar.projectKey=${NAMESPACE}_${DOCKER_IMAGE} \
-                          -Dsonar.projectName=${NAMESPACE}_${DOCKER_IMAGE} \
+                          -Dsonar.projectKey=2401172_Eventure \
+                          -Dsonar.projectName=2401172_Eventure \
                           -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
                           -Dsonar.token=${SONAR_TOKEN} \
                           -Dsonar.sources=. \
@@ -142,8 +141,8 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 container('kubectl') {
-                    // Points to your specific k8s directory
-                    dir('k8s') {
+                    // Points to your 'k8s-deployment' folder as per your project structure metadata
+                    dir('k8s-deployment') {
                         sh """
                             kubectl apply -f deployment.yaml -n ${NAMESPACE}
                         """
