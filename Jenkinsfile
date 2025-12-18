@@ -81,7 +81,8 @@ spec:
         stage('Push Image') {
             steps {
                 container('dind') {
-                    sh "docker login http://${REGISTRY_HOST} -u admin -p Changeme@2025"
+                    // FIXED: Removed 'http://' prefix which caused the Build #39 failure
+                    sh "docker login ${REGISTRY_HOST} -u admin -p Changeme@2025"
                     sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
                     sh "docker push ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
                 }
@@ -104,6 +105,6 @@ spec:
 
     post {
         success { echo "🎉 Pipeline GREEN! Final deployment successful." }
-        failure { echo "❌ Pipeline failed - Check SonarQube connectivity." }
+        failure { echo "❌ Pipeline failed - Check logs." }
     }
 }
