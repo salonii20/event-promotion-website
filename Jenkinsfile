@@ -54,10 +54,10 @@ spec:
 
     environment {
         DOCKER_IMAGE  = "event-promotion-website"
-        SONAR_TOKEN   = "sqp_f42fc7b9e4433f6f08040c3f2303f1e5cc5524c1"
+        SONAR_TOKEN   = "sqp_e6d7eeec95c8bd2fa2299fdda33495d5527313c5"
         REGISTRY_HOST = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
-        REGISTRY      = "${REGISTRY_HOST}/2401173"
-        NAMESPACE     = "2401173"
+        REGISTRY      = "${REGISTRY_HOST}/2401172"
+        NAMESPACE     = "2401172"
     }
 
     stages {
