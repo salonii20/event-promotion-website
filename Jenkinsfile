@@ -25,7 +25,11 @@ spec:
     environment {
         REGISTRY = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         IMAGE_NAME = "event-promotion-website"
-        NAMESPACE = "2401172" 
+        
+        // --- CHANGE THIS TO YOUR ACTUAL NAMESPACE (Check Lens) ---
+        // Examples: "student-2401172", "2401172-ns", or "default"
+        NAMESPACE = "student-2401172" 
+        
         CREDS_ID = "nexus-credentials"
     }
     stages {
@@ -50,7 +54,6 @@ spec:
             steps {
                 container('docker') {
                     script {
-                        // Use a different method to get kubectl that doesn't rely on curl
                         sh """
                             wget https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl
                             chmod +x kubectl
