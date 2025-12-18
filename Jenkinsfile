@@ -26,7 +26,7 @@ spec:
         REGISTRY = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         IMAGE_NAME = "event-promotion-website"
         // Try '2401172' first. If it says NotFound, change this to 'default'
-        NAMESPACE = "2401172" 
+        NAMESPACE = "default" 
         CREDS_ID = "nexus-credentials"
     }
     stages {
