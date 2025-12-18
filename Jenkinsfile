@@ -13,6 +13,10 @@ spec:
     env:
     - name: DOCKER_TLS_CERTDIR
       value: ""
+    volumeMounts:
+    - name: docker-config
+      mountPath: /etc/docker/daemon.json
+      subPath: daemon.json
   - name: sonar-scanner
     image: sonarsource/sonar-scanner-cli
     command: ["cat"]
@@ -20,6 +24,10 @@ spec:
   - name: kubectl
     image: bitnami/kubectl:latest
     command: ["sleep", "infinity"]
+  volumes:
+  - name: docker-config
+    configMap:
+      name: docker-daemon-config
 '''
         }
     }
@@ -82,7 +90,6 @@ spec:
         stage('Push Image') {
             steps {
                 container('dind') {
-                    // Reverted to stable login but using credentials correctly
                     withCredentials([usernamePassword(credentialsId: "${CREDS_ID}", passwordVariable: 'PWD', usernameVariable: 'USR')]) {
                         sh "docker login ${REGISTRY_HOST} -u ${USR} -p ${PWD}"
                         sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
@@ -107,6 +114,6 @@ spec:
     }
 
     post {
-        success { echo "🎉 Build #${BUILD_NUMBER} is GREEN!" }
+        success { echo "🎉 Build #${BUILD_NUMBER} SUCCESS! Pipeline is GREEN." }
     }
 }
