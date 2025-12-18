@@ -1,7 +1,6 @@
 pipeline {
     agent {
         kubernetes {
-            // Updated YAML configuration from your reference
             yaml '''
 apiVersion: v1
 kind: Pod
@@ -54,7 +53,6 @@ spec:
 
     environment {
         DOCKER_IMAGE  = "event-promotion-website"
-        // Updated SONAR_TOKEN with your provided credential
         SONAR_TOKEN   = "sqp_e6d7eeec95c8bd2fa2299fdda33495d5527313c5"
         REGISTRY_HOST = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         REGISTRY      = "${REGISTRY_HOST}/2401172"
@@ -90,7 +88,6 @@ spec:
                             echo "Building PHP Docker image..."
                             docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
                             docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest
-                            docker image ls
                         """
                     }
                 }
@@ -116,10 +113,7 @@ spec:
         stage('Login to Nexus') {
             steps {
                 container('dind') {
-                    sh """
-                        echo 'Logging into Nexus registry...'
-                        docker login ${REGISTRY_HOST} -u admin -p Changeme@2025
-                    """
+                    sh "docker login ${REGISTRY_HOST} -u admin -p Changeme@2025"
                 }
             }
         }
@@ -141,10 +135,11 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 container('kubectl') {
-                    // Points to your 'k8s-deployment' folder as per your project structure metadata
+                    // Points to your specific k8s-deployment directory
                     dir('k8s-deployment') {
                         sh """
                             kubectl apply -f deployment.yaml -n ${NAMESPACE}
+                            kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
                         """
                     }
                 }

@@ -1,11 +1,11 @@
 # =====================================================================
-# 1. PERSISTENT VOLUME CLAIM (FOR IMAGE UPLOADS)
+# 1. PERSISTENT VOLUME CLAIM
 # =====================================================================
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: pvc-uploads
-  namespace: "default"
+  namespace: "2401172"
 spec:
   storageClassName: local-path
   accessModes:
@@ -15,13 +15,13 @@ spec:
       storage: 1Gi
 ---
 # =====================================================================
-# 2. SERVICE (EXPOSES THE APP INTERNALLY)
+# 2. SERVICE
 # =====================================================================
 apiVersion: v1
 kind: Service
 metadata:
   name: event-promotion-service
-  namespace: "default"
+  namespace: "2401172"
 spec:
   selector:
     app: event-promotion
@@ -32,13 +32,13 @@ spec:
   type: ClusterIP
 ---
 # =====================================================================
-# 3. DEPLOYMENT (RUNS YOUR PHP APP)
+# 3. DEPLOYMENT
 # =====================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: event-promotion-website
-  namespace: "default"
+  namespace: "2401172"
 spec:
   replicas: 1
   selector:
@@ -49,36 +49,30 @@ spec:
       labels:
         app: event-promotion
     spec:
+      imagePullSecrets:
+        - name: nexus-secret
       containers:
         - name: event-promotion-container
-          # Uses the verified Nexus registry from your Build #20 logs
-          image: nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085/event-promotion-website:latest
+          image: nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085/2401172/event-promotion-website:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80
           volumeMounts:
             - name: uploads-storage
               mountPath: /var/www/html/uploads
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-            limits:
-              cpu: "500m"
-              memory: "512Mi"
       volumes:
         - name: uploads-storage
           persistentVolumeClaim:
             claimName: pvc-uploads
 ---
 # =====================================================================
-# 4. INGRESS (PROVIDES YOUR EXTERNAL LINK)
+# 4. INGRESS
 # =====================================================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: event-promotion-ingress
-  namespace: "default"
+  namespace: "2401172"
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
