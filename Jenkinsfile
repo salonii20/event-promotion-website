@@ -114,6 +114,7 @@ spec:
     }
 
     post {
-        success { echo "🎉 Build #${BUILD_NUMBER} SUCCESS! Pipeline is GREEN." }
+        success { echo "🎉 SUCCESS! Build #${BUILD_NUMBER} is GREEN." }
+        failure { echo "❌ Pipeline failed at stage: ${env.STAGE_NAME}" }
     }
 }
