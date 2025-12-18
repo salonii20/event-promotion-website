@@ -39,7 +39,6 @@ spec:
             steps {
                 deleteDir()
                 sh "git clone https://github.com/salonii20/event-promotion-website.git ."
-                echo "✔ PHP Source code cloned successfully"
             }
         }
 
@@ -59,7 +58,6 @@ spec:
                             }
                         }
                         sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
-                        sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest"
                     }
                 }
             }
@@ -68,7 +66,6 @@ spec:
         stage('SonarQube Analysis') {
             steps {
                 container('sonar-scanner') {
-                    // Reverted to the logic that worked in Build #26
                     sh """
                         sonar-scanner \
                           -Dsonar.projectKey=2401172_Eventure \
@@ -105,7 +102,6 @@ spec:
     }
 
     post {
-        success { echo "🎉 Pipeline GREEN! Deployed to ${NAMESPACE}" }
-        failure { echo "❌ Pipeline failed" }
+        success { echo "🎉 Pipeline GREEN! Final deployment successful." }
     }
 }
