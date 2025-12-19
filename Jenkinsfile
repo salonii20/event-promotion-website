@@ -23,7 +23,9 @@ spec:
     tty: true
   - name: kubectl
     image: bitnami/kubectl:latest
-    command: ["cat"]
+    # FIX: Changed 'cat' to 'sleep' to keep the process alive and stable
+    command: ["sleep"]
+    args: ["9999999"]
     tty: true
   volumes:
   - name: docker-config
@@ -104,9 +106,11 @@ spec:
             steps {
                 container('kubectl') {
                     dir('k8s-deployment') {
-                        // Deploying and then updating the image for the specific build
-                        sh "kubectl apply -f deployment.yaml -n ${NAMESPACE}"
-                        sh "kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}"
+                        // Combined apply and set image into one robust block
+                        sh """
+                            kubectl apply -f deployment.yaml -n ${NAMESPACE}
+                            kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
+                        """
                     }
                 }
             }
@@ -115,6 +119,6 @@ spec:
 
     post {
         success { echo "🎉 SUCCESS! Build #${BUILD_NUMBER} is GREEN." }
-        failure { echo "❌ Pipeline failed. All technical stages passed, check kubectl connection." }
+        failure { echo "❌ Pipeline failed at stage: ${env.STAGE_NAME}" }
     }
 }
