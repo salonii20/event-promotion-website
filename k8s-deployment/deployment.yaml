@@ -72,7 +72,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: eventify.college.edu
+    - host: eventify.imcc.com
       http:
         paths:
           - path: /
