@@ -21,10 +21,6 @@ spec:
     image: sonarsource/sonar-scanner-cli
     command: ["cat"]
     tty: true
-  - name: kubectl
-    image: bitnami/kubectl:latest
-    command: ["cat"]
-    tty: true
   volumes:
   - name: docker-config
     configMap:
@@ -77,7 +73,7 @@ spec:
             steps {
                 container('sonar-scanner') {
                     sh """
-                        sleep 10
+                        sleep 5
                         sonar-scanner \
                           -Dsonar.projectKey=2401172_Eventure \
                           -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
@@ -102,21 +98,20 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
-                // FIXED: Wrapped in container('kubectl') so the command is found
-                container('kubectl') {
-                    dir('k8s-deployment') {
-                        sh """
-                            kubectl apply -f deployment.yaml -n ${NAMESPACE}
-                            kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
-                        """
-                    }
+                // FIXED: Running directly on the agent pod 
+                // which has kubectl pre-configured to talk to the cluster.
+                dir('k8s-deployment') {
+                    sh """
+                        kubectl apply -f deployment.yaml -n ${NAMESPACE}
+                        kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
+                    """
                 }
             }
         }
     }
 
     post {
-        success { echo "🎉 Build #${BUILD_NUMBER} is GREEN! Submission ready." }
-        failure { echo "❌ Deployment failed. Check kubectl container logs." }
+        success { echo "🎉 FINALLY GREEN! Build #${BUILD_NUMBER} successful." }
+        failure { echo "❌ Build failed - check the specific stage logs." }
     }
 }
