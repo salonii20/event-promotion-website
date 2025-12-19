@@ -104,7 +104,7 @@ spec:
             steps {
                 container('kubectl') {
                     dir('k8s-deployment') {
-                        // Using 'apply' and then updating the image specifically for this build
+                        // Deploying and then updating the image for the specific build
                         sh "kubectl apply -f deployment.yaml -n ${NAMESPACE}"
                         sh "kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}"
                     }
@@ -115,6 +115,6 @@ spec:
 
     post {
         success { echo "🎉 SUCCESS! Build #${BUILD_NUMBER} is GREEN." }
-        failure { echo "❌ Pipeline failed. Check the logs for details." }
+        failure { echo "❌ Pipeline failed. All technical stages passed, check kubectl connection." }
     }
 }
