@@ -21,6 +21,10 @@ spec:
     image: sonarsource/sonar-scanner-cli
     command: ["cat"]
     tty: true
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command: ["cat"]
+    tty: true
   volumes:
   - name: docker-config
     configMap:
@@ -98,20 +102,21 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
-                // FIX: Removed container('kubectl') to run directly on the agent pod
-                // which has kubectl pre-configured to talk to the cluster.
-                dir('k8s-deployment') {
-                    sh """
-                        kubectl apply -f deployment.yaml -n ${NAMESPACE}
-                        kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
-                    """
+                // FIXED: Wrapped in container('kubectl') so the command is found
+                container('kubectl') {
+                    dir('k8s-deployment') {
+                        sh """
+                            kubectl apply -f deployment.yaml -n ${NAMESPACE}
+                            kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
+                        """
+                    }
                 }
             }
         }
     }
 
     post {
-        success { echo "🎉 SUCCESS! Build #${BUILD_NUMBER} is finally GREEN." }
-        failure { echo "❌ Pipeline failed - Check deployment logs." }
+        success { echo "🎉 Build #${BUILD_NUMBER} is GREEN! Submission ready." }
+        failure { echo "❌ Deployment failed. Check kubectl container logs." }
     }
 }
