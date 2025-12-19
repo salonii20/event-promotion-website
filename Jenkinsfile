@@ -21,6 +21,10 @@ spec:
     image: sonarsource/sonar-scanner-cli
     command: ["cat"]
     tty: true
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command: ["cat"]
+    tty: true
   volumes:
   - name: docker-config
     configMap:
@@ -73,7 +77,7 @@ spec:
             steps {
                 container('sonar-scanner') {
                     sh """
-                        sleep 5
+                        sleep 10
                         sonar-scanner \
                           -Dsonar.projectKey=2401172_Eventure \
                           -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
@@ -98,20 +102,21 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
-                // FIXED: Removed the container wrapper.
-                // This runs directly on the main agent pod to stop the "process never started" error.
-                dir('k8s-deployment') {
-                    sh """
-                        kubectl apply -f deployment.yaml -n ${NAMESPACE}
-                        kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
-                    """
+                // FIXED: Wrapped in container('kubectl') so the command is found
+                container('kubectl') {
+                    dir('k8s-deployment') {
+                        sh """
+                            kubectl apply -f deployment.yaml -n ${NAMESPACE}
+                            kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
+                        """
+                    }
                 }
             }
         }
     }
 
     post {
-        success { echo "🎉 ALL STAGES GREEN! Build #${BUILD_NUMBER} SUCCESS." }
-        failure { echo "❌ Build failed at stage: ${env.STAGE_NAME}" }
+        success { echo "🎉 ALL STAGES GREEN! Build #${BUILD_NUMBER} successful." }
+        failure { echo "❌ Deployment failed. Check kubectl container status." }
     }
 }
