@@ -21,6 +21,10 @@ spec:
     image: sonarsource/sonar-scanner-cli
     command: ["cat"]
     tty: true
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command: ["cat"]
+    tty: true
   volumes:
   - name: docker-config
     configMap:
@@ -73,7 +77,7 @@ spec:
             steps {
                 container('sonar-scanner') {
                     sh """
-                        sleep 5
+                        sleep 10
                         sonar-scanner \
                           -Dsonar.projectKey=2401172_Eventure \
                           -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
@@ -98,20 +102,21 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
-                // FIXED: Running directly on the agent pod 
-                // which has kubectl pre-configured to talk to the cluster.
-                dir('k8s-deployment') {
-                    sh """
-                        kubectl apply -f deployment.yaml -n ${NAMESPACE}
-                        kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
-                    """
+                // FIXED: Wrapped in container('kubectl') to resolve 'kubectl: not found'
+                container('kubectl') {
+                    dir('k8s-deployment') {
+                        sh """
+                            kubectl apply -f deployment.yaml -n ${NAMESPACE}
+                            kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
+                        """
+                    }
                 }
             }
         }
     }
 
     post {
-        success { echo "🎉 FINALLY GREEN! Build #${BUILD_NUMBER} successful." }
-        failure { echo "❌ Build failed - check the specific stage logs." }
+        success { echo "🎉 SUCCESS! Build #${BUILD_NUMBER} is GREEN." }
+        failure { echo "❌ Build failed - check specific container logs." }
     }
 }
