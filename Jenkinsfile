@@ -21,11 +21,6 @@ spec:
     image: sonarsource/sonar-scanner-cli
     command: ["cat"]
     tty: true
-  - name: kubectl
-    image: bitnami/kubectl:latest
-    # FIX: Using 'cat' with 'tty' for maximum stability in this environment
-    command: ["cat"]
-    tty: true
   volumes:
   - name: docker-config
     configMap:
@@ -78,7 +73,7 @@ spec:
             steps {
                 container('sonar-scanner') {
                     sh """
-                        sleep 5
+                        sleep 10
                         sonar-scanner \
                           -Dsonar.projectKey=2401172_Eventure \
                           -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
@@ -103,12 +98,13 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
-                container('kubectl') {
-                    dir('k8s-deployment') {
-                        // Separating commands to ensure each one starts correctly
-                        sh "kubectl apply -f deployment.yaml -n ${NAMESPACE}"
-                        sh "kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}"
-                    }
+                // FIX: Removed container('kubectl') to run directly on the agent pod
+                // which has kubectl pre-configured to talk to the cluster.
+                dir('k8s-deployment') {
+                    sh """
+                        kubectl apply -f deployment.yaml -n ${NAMESPACE}
+                        kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
+                    """
                 }
             }
         }
@@ -116,6 +112,6 @@ spec:
 
     post {
         success { echo "🎉 SUCCESS! Build #${BUILD_NUMBER} is finally GREEN." }
-        failure { echo "❌ Deployment failed at stage: ${env.STAGE_NAME}" }
+        failure { echo "❌ Pipeline failed - Check deployment logs." }
     }
 }
