@@ -73,7 +73,7 @@ spec:
             steps {
                 container('sonar-scanner') {
                     sh """
-                        sleep 5
+                        sleep 10
                         sonar-scanner \
                           -Dsonar.projectKey=2401172_Eventure \
                           -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
@@ -98,28 +98,20 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
+                // SOLUTION: Run inside the sonar-scanner container but download kubectl on the fly
+                // This container is proven stable and won't give the "never started" error.
                 container('sonar-scanner') {
                     dir('k8s-deployment') {
                         sh """
-                            # Step 1: Download kubectl for this container
-                            if [ ! -f ./kubectl ]; then
+                            if ! command -v kubectl &> /dev/null; then
                                 curl -LO "https://dl.k8s.io/release/\$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                                 chmod +x kubectl
+                                ./kubectl apply -f deployment.yaml -n ${NAMESPACE}
+                                ./kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
+                            else
+                                kubectl apply -f deployment.yaml -n ${NAMESPACE}
+                                kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
                             fi
-                            
-                            # Step 2: Apply changes
-                            ./kubectl apply -f deployment.yaml -n ${NAMESPACE}
-                            ./kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
-                            
-                            # Step 3: Diagnostic logging to fix 503 error
-                            echo "--- WAITING FOR POD TO INITIALIZE ---"
-                            sleep 45
-                            
-                            echo "--- CURRENT POD STATUS ---"
-                            ./kubectl get pods -l app=event-promotion -n ${NAMESPACE}
-                            
-                            echo "--- POD ERROR LOGS (The reason for 503) ---"
-                            ./kubectl logs -l app=event-promotion -n ${NAMESPACE} --tail=30
                         """
                     }
                 }
@@ -128,7 +120,6 @@ spec:
     }
 
     post {
-        success { echo "🎉 SUCCESS! Build #${BUILD_NUMBER} is GREEN." }
-        failure { echo "❌ Build failed. Check the specific stage log above." }
+        success { echo "🎉 ALL STAGES GREEN! Build #${BUILD_NUMBER} successful." }
     }
 }
