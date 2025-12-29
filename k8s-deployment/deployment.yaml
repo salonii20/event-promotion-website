@@ -48,12 +48,10 @@ spec:
     spec:
       containers:
         - name: event-promotion-container
-          # FIXED: Changed :latest to :63 to match your successful build
-          image: nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085/2401172/event-promotion-website:63
+          image: nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085/2401172/event-promotion-website:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80
-          # ADDED: Readiness probe prevents 503 errors while the app starts
           readinessProbe:
             httpGet:
               path: /

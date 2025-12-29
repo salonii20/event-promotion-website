@@ -98,20 +98,15 @@ spec:
 
         stage('Deploy to Kubernetes') {
             steps {
-                // SOLUTION: Run inside the sonar-scanner container but download kubectl on the fly
-                // This container is proven stable and won't give the "never started" error.
                 container('sonar-scanner') {
                     dir('k8s-deployment') {
                         sh """
-                            if ! command -v kubectl &> /dev/null; then
+                            if [ ! -f ./kubectl ]; then
                                 curl -LO "https://dl.k8s.io/release/\$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                                 chmod +x kubectl
-                                ./kubectl apply -f deployment.yaml -n ${NAMESPACE}
-                                ./kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
-                            else
-                                kubectl apply -f deployment.yaml -n ${NAMESPACE}
-                                kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
                             fi
+                            ./kubectl apply -f deployment.yaml -n ${NAMESPACE}
+                            ./kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
                         """
                     }
                 }
@@ -120,6 +115,6 @@ spec:
     }
 
     post {
-        success { echo "🎉 ALL STAGES GREEN! Build #${BUILD_NUMBER} successful." }
+        success { echo "🎉 SUCCESS! Build #${BUILD_NUMBER} is GREEN." }
     }
 }
