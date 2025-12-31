@@ -48,7 +48,7 @@ spec:
     spec:
       containers:
         - name: event-promotion-container
-          image: nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085/2401172/event-promotion-website:latest
+          image: 127.0.0.1:30085/2401172/event-promotion-website:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80
