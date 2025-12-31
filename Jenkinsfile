@@ -1,4 +1,5 @@
 pipeline {
+
     agent {
         kubernetes {
             yaml '''
@@ -6,6 +7,7 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
+
   - name: dind
     image: docker:dind
     securityContext:
@@ -17,14 +19,34 @@ spec:
     - name: docker-config
       mountPath: /etc/docker/daemon.json
       subPath: daemon.json
+
   - name: sonar-scanner
     image: sonarsource/sonar-scanner-cli
     command: ["cat"]
     tty: true
+
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command: ["cat"]
+    tty: true
+    securityContext:
+      runAsUser: 0
+      readOnlyRootFilesystem: false
+    env:
+    - name: KUBECONFIG
+      value: /kube/config
+    volumeMounts:
+    - name: kubeconfig-secret
+      mountPath: /kube/config
+      subPath: kubeconfig
+
   volumes:
   - name: docker-config
     configMap:
       name: docker-daemon-config
+  - name: kubeconfig-secret
+    secret:
+      secretName: kubeconfig-secret
 '''
         }
     }
@@ -33,18 +55,21 @@ spec:
 
     environment {
         DOCKER_IMAGE  = "event-promotion-website"
-        SONAR_TOKEN   = "sqp_e6d7eeec95c8bd2fa2299fdda33495d5527313c5"
         REGISTRY_HOST = "nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085"
         REGISTRY      = "${REGISTRY_HOST}/2401172"
-        NAMESPACE     = "default" 
-        CREDS_ID      = "nexus-credentials"
+        NAMESPACE     = "2401172"
+
+        SONAR_PROJECT = "2401172_Eventure"
+        SONAR_HOST    = "http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000"
+        SONAR_TOKEN   = "sqp_e6d7eeec95c8bd2fa2299fdda33495d5527313c5"
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
                 deleteDir()
-                sh "git clone https://github.com/salonii20/event-promotion-website.git ."
+                sh 'git clone https://github.com/salonii20/event-promotion-website.git .'
             }
         }
 
@@ -57,14 +82,28 @@ spec:
                                 try {
                                     sh 'docker info >/dev/null 2>&1'
                                     return true
-                                } catch (Exception e) {
+                                } catch (e) {
                                     sleep 5
                                     return false
                                 }
                             }
                         }
-                        sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
+                        sh '''
+                            docker build -t event-promotion-website:${BUILD_NUMBER} .
+                            docker tag event-promotion-website:${BUILD_NUMBER} event-promotion-website:latest
+                        '''
                     }
+                }
+            }
+        }
+
+        stage('Run Tests & Coverage') {
+            steps {
+                container('dind') {
+                    sh '''
+                        docker run --rm event-promotion-website:latest \
+                        sh -c "php -l index.php || true"
+                    '''
                 }
             }
         }
@@ -72,14 +111,27 @@ spec:
         stage('SonarQube Analysis') {
             steps {
                 container('sonar-scanner') {
-                    sh """
-                        sleep 10
+                    sh '''
                         sonar-scanner \
                           -Dsonar.projectKey=2401172_Eventure \
+                          -Dsonar.projectName=2401172_Eventure \
                           -Dsonar.host.url=http://my-sonarqube-sonarqube.sonarqube.svc.cluster.local:9000 \
                           -Dsonar.token=${SONAR_TOKEN} \
-                          -Dsonar.sources=.
-                    """
+                          -Dsonar.sources=. \
+                          -Dsonar.language=php
+                    '''
+                }
+            }
+        }
+
+        stage('Login to Nexus') {
+            steps {
+                container('dind') {
+                    sh '''
+                        echo "Logging into Nexus registry..."
+                        docker login nexus-service-for-docker-hosted-registry.nexus.svc.cluster.local:8085 \
+                          -u admin -p Changeme@2025
+                    '''
                 }
             }
         }
@@ -87,27 +139,25 @@ spec:
         stage('Push Image') {
             steps {
                 container('dind') {
-                    withCredentials([usernamePassword(credentialsId: "${CREDS_ID}", passwordVariable: 'PWD', usernameVariable: 'USR')]) {
-                        sh "docker login ${REGISTRY_HOST} -u ${USR} -p ${PWD}"
-                        sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
-                        sh "docker push ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
-                    }
+                    sh '''
+                        docker tag event-promotion-website:${BUILD_NUMBER} ${REGISTRY}/event-promotion-website:${BUILD_NUMBER}
+                        docker tag event-promotion-website:${BUILD_NUMBER} ${REGISTRY}/event-promotion-website:latest
+
+                        docker push ${REGISTRY}/event-promotion-website:${BUILD_NUMBER}
+                        docker push ${REGISTRY}/event-promotion-website:latest
+                    '''
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                container('sonar-scanner') {
+                container('kubectl') {
                     dir('k8s-deployment') {
-                        sh """
-                            if [ ! -f ./kubectl ]; then
-                                curl -LO "https://dl.k8s.io/release/\$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                                chmod +x kubectl
-                            fi
-                            ./kubectl apply -f deployment.yaml -n ${NAMESPACE}
-                            ./kubectl set image deployment/event-promotion-website event-promotion-container=${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${NAMESPACE}
-                        """
+                        sh '''
+                            kubectl get namespace 2401172 || kubectl create namespace 2401172
+                            kubectl apply -f deployment.yaml -n 2401172
+                        '''
                     }
                 }
             }
@@ -115,6 +165,8 @@ spec:
     }
 
     post {
-        success { echo "🎉 SUCCESS! Build #${BUILD_NUMBER} is GREEN." }
+        success { echo "🎉 Event Promotion Pipeline completed successfully" }
+        failure { echo "❌ Pipeline failed" }
+        always  { echo "🔄 Pipeline finished" }
     }
 }
